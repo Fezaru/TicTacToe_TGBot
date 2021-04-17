@@ -37,7 +37,7 @@ def play_command(update: Update, context: CallbackContext):
     games = Game.select()
 
     for game in games:
-        if user_id in game.player_o and game.player_x:
+        if user_id in game.player_o or game.player_x:
             break
     else:  # написать функцию, которая преобразует массив х, о и 0 в InlineKeyboard
         # И НЕ ЗАБЫТЬ ДОБАВИТЬ ПРОВЕРКУ if state == 'in process'

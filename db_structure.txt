@@ -1,0 +1,1 @@
+id | player_x | player_o | players_step | map(path like '../map.txt') | 

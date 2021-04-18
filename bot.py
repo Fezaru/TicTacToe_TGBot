@@ -55,8 +55,8 @@ def play_command(update: Update, context: CallbackContext):
     db.connect()
     games = Game.select()
 
-    for game in games:
-        if user_id in game.player_o or game.player_x:  # проверить, добавить логику
+    for game in games:  # БАЗА ПУСТАЯ ЦИКЛ НЕ ЗАПУСКАЕТСЯ
+        if user_id in game.player_o or user_id in game.player_x:  # проверить, добавить логику
             break  # если игрок уже в базе выслать крестику карту из бд с его игрой
     else:  # написать функцию, которая преобразует массив х, о и 0 в InlineKeyboard
         # И НЕ ЗАБЫТЬ ДОБАВИТЬ ПРОВЕРКУ if state == 'in process'

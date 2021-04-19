@@ -6,7 +6,7 @@ from telegram import InlineKeyboardMarkup
 from telegram import InlineKeyboardButton
 from config import token
 import emoji
-from db import db, Game
+from db import *
 
 
 def keyboard_to_map(keyboard: InlineKeyboardMarkup):
@@ -54,24 +54,31 @@ def play_command(update: Update, context: CallbackContext):
 
     db.connect()
     games = Game.select()
-
-    for game in games:  # БАЗА ПУСТАЯ ЦИКЛ НЕ ЗАПУСКАЕТСЯ
-        if user_id in game.player_o or user_id in game.player_x:  # проверить, добавить логику
-            break  # если игрок уже в базе выслать крестику карту из бд с его игрой
-    else:  # написать функцию, которая преобразует массив х, о и 0 в InlineKeyboard
-        # И НЕ ЗАБЫТЬ ДОБАВИТЬ ПРОВЕРКУ if state == 'in process'
-        for game in games:
-            if game.player_o is None:  # не уверен что будет работать с нан, проверить или заменить на ''
-                game.player_o = user_id
-                game.state = 'in progress'
+    if len(games) == 0:
+        initial_map(1)
+        game = Game(player_x=user_id, player_o=None, current_step=user_id, map=f'..\\map{1}',
+                    # нан не нарботает изменить на пустуюю строку
+                    state='Waiting for players')
+        game.save()
+    else:
+        for game in games:  # БАЗА ПУСТАЯ ЦИКЛ НЕ ЗАПУСКАЕТСЯ (запусается вроде(елс работает))
+            if user_id in game.player_o or user_id in game.player_x:  # проверить, добавить логику
+                break  # если игрок уже в базе выслать крестику карту из бд с его игрой
+        else:  # написать функцию, которая преобразует массив х, о и 0 в InlineKeyboard
+            # И НЕ ЗАБЫТЬ ДОБАВИТЬ ПРОВЕРКУ if state == 'in process'
+            for game in games:
+                if game.player_o is None:  # не уверен что будет работать с нан, проверить или заменить на ''
+                    game.player_o = user_id
+                    game.state = 'in progress'
+                    game.save()
+                    break
+            else:
+                max_id = Game.select(fn.MAX(Game.id)).scalar() + 1
+                # max_id = Game.get(fn.MAX(Game.id)) + 1
+                initial_map(max_id)
+                game = Game(player_x=user_id, player_o=None, current_step=user_id, map=f'..\\map{max_id}',
+                            state='Waiting for players')
                 game.save()
-                break
-        else:
-            max_id = Game.get(fn.Max(id)) + 1
-            initial_map(max_id)
-            game = Game(player_x=user_id, player_o=None, current_step=user_id, map=f'..\\map{max_id}',
-                        state='Waiting for players')
-            game.save()
 
     db.close()
 

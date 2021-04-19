@@ -1,3 +1,6 @@
+from collections import namedtuple
+from dataclasses import dataclass
+
 from peewee import *
 
 db = SqliteDatabase('tictactoe_games.db')
@@ -15,4 +18,5 @@ class Game(Model):
         database = db
 
 
-db.create_tables([Game])
+if __name__ == '__main__':
+    db.create_tables([Game])

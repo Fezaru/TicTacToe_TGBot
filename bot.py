@@ -37,7 +37,13 @@ def initial_keyboard():  # возможно потом перепишу, т.к. 
     btns = [InlineKeyboardButton(text=emoji.emojize(':white_large_square:', use_aliases=True), callback_data=str(i)) for
             i in range(9)]
     buttons = [btns[i:i + 3] for i in range(0, 7, 3)]
-    return InlineKeyboardMarkup([buttons[0], buttons[1], buttons[2]], resize_keyboard=True)
+    return InlineKeyboardMarkup([buttons[0], buttons[1], buttons[2]])
+
+
+def send_initial_keyboard(context, user_id):
+    reply_markup = initial_keyboard()
+    context.bot.send_message(chat_id=user_id, text='Играй в крестики нолики через клавиатуру!',
+                             reply_markup=reply_markup)
 
 
 def start_command(update: Update, context: CallbackContext):
@@ -49,7 +55,6 @@ def help_command(update: Update, context: CallbackContext):
 
 
 def play_command(update: Update, context: CallbackContext):
-    reply_markup = initial_keyboard()
     user_id = update.message.chat_id
 
     db.connect()
@@ -57,22 +62,30 @@ def play_command(update: Update, context: CallbackContext):
     if len(games) == 0:
         initial_map(1)
         game = Game(player_x=user_id, player_o=None, current_step=user_id, map=f'..\\map{1}',
-                    # нан не нарботает изменить на пустуюю строку
                     state='Waiting for players')
         game.save()
+        send_initial_keyboard(context, user_id)
     else:
         for game in games:  # БАЗА ПУСТАЯ ЦИКЛ НЕ ЗАПУСКАЕТСЯ (запусается вроде(елс работает))
             if str(user_id) == str(game.player_o) or str(user_id) == str(game.player_x):
+                reply_markup = map_to_keyboard(f'map{str(game.id)}')
                 context.bot.send_message(chat_id=user_id,
-                                         text='Ты уже в игре!')  # если игрок уже в базе выслать крестику карту из бд с его игрой
+                                         text='Ты уже в игре!',
+                                         reply_markup=reply_markup)  # если игрок уже в базе выслать крестику карту из бд с его игрой
                 break
-        else:  # написать функцию, которая преобразует массив х, о и 0 в InlineKeyboard
+        else:
             # И НЕ ЗАБЫТЬ ДОБАВИТЬ ПРОВЕРКУ if state == 'in process'
             for game in games:
                 if game.player_o is None:  # не уверен что будет работать с нан, проверить или заменить на ''
                     game.player_o = user_id
                     game.state = 'in progress'
                     game.save()
+                    context.bot.send_message(chat_id=game.player_o,  # проверить работает ли
+                                             text='Ты уже в игре!',
+                                             reply_markup=initial_keyboard())
+                    context.bot.send_message(chat_id=game.player_x,
+                                             text='Ты уже в игре!',
+                                             reply_markup=initial_keyboard())
                     break
             else:
                 max_id = Game.select(fn.MAX(Game.id)).scalar() + 1
@@ -81,11 +94,9 @@ def play_command(update: Update, context: CallbackContext):
                 game = Game(player_x=user_id, player_o=None, current_step=user_id, map=f'..\\map{max_id}',
                             state='Waiting for players')
                 game.save()
+                send_initial_keyboard(context, user_id)
 
     db.close()
-
-    context.bot.send_message(chat_id=user_id, text='Играй в крестики нолики через клавиатуру!',
-                             reply_markup=reply_markup)
     # update.message.reply_text(text='Играй в крестики нолики через клавиатуру!', reply_markup=reply_markup)
 
 

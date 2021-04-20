@@ -1,4 +1,3 @@
-from collections import namedtuple
 from dataclasses import dataclass
 
 from peewee import *
@@ -9,7 +8,7 @@ db = SqliteDatabase('tictactoe_games.db')
 class Game(Model):
     id = PrimaryKeyField()
     player_x = CharField()
-    player_o = CharField()
+    player_o = CharField(null=True)
     current_step = CharField()
     map = CharField()
     state = CharField()

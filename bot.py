@@ -62,8 +62,10 @@ def play_command(update: Update, context: CallbackContext):
         game.save()
     else:
         for game in games:  # БАЗА ПУСТАЯ ЦИКЛ НЕ ЗАПУСКАЕТСЯ (запусается вроде(елс работает))
-            if user_id in game.player_o or user_id in game.player_x:  # проверить, добавить логику
-                break  # если игрок уже в базе выслать крестику карту из бд с его игрой
+            if str(user_id) == str(game.player_o) or str(user_id) == str(game.player_x):
+                context.bot.send_message(chat_id=user_id,
+                                         text='Ты уже в игре!')  # если игрок уже в базе выслать крестику карту из бд с его игрой
+                break
         else:  # написать функцию, которая преобразует массив х, о и 0 в InlineKeyboard
             # И НЕ ЗАБЫТЬ ДОБАВИТЬ ПРОВЕРКУ if state == 'in process'
             for game in games:
@@ -96,8 +98,8 @@ def message_handler(update: Update, context: CallbackContext):
     update.message.reply_text('тест')
 
 
-def error(update: Update, context: CallbackContext):
-    print(f'Update {update} caused error {context.error}')
+# def error(update: Update, context: CallbackContext):
+#     print(f'Update {update} caused error {context.error}')
 
 
 def main():
@@ -107,7 +109,7 @@ def main():
     updater.dispatcher.add_handler(CommandHandler('help', filters=Filters.all, callback=help_command))
     updater.dispatcher.add_handler(CommandHandler('play', filters=Filters.all, callback=play_command))
     updater.dispatcher.add_handler(MessageHandler(filters=Filters.all, callback=message_handler))
-    updater.dispatcher.add_error_handler(error)
+    # updater.dispatcher.add_error_handler(error)
 
     updater.start_polling()
     updater.idle()

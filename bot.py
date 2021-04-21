@@ -1,11 +1,11 @@
-from peewee import fn
-from telegram.ext import *
-from telegram import Update
-from telegram import Bot
-from telegram import InlineKeyboardMarkup
-from telegram import InlineKeyboardButton
-from config import token
 import emoji
+from telegram import Bot
+from telegram import InlineKeyboardButton
+from telegram import InlineKeyboardMarkup
+from telegram import Update
+from telegram.ext import *
+
+from config import token
 from db import *
 
 
@@ -20,9 +20,10 @@ def keyboard_to_map(keyboard: InlineKeyboardMarkup):
 def map_to_keyboard(filename):  # возможно callback_data и text будут разными и придется менять структуру данных
     with open(filename, 'r') as f:
         game_map = f.readline().split()
-    btns = [InlineKeyboardButton(text=emoji.emojize(el, use_aliases=True), callback_data=el)
+    btns = [InlineKeyboardButton(text=emoji.emojize(el, use_aliases=True), callback_data=str(i))
+            # проверить коллбек значения
             for
-            el in game_map]
+            i, el in enumerate(game_map)]
     buttons = [btns[i:i + 3] for i in range(0, 7, 3)]
     return InlineKeyboardMarkup([buttons[0], buttons[1], buttons[2]], resize_keyboard=True)
 

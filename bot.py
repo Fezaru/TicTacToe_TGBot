@@ -18,7 +18,7 @@ def keyboard_to_map(keyboard: InlineKeyboardMarkup):
 
 
 def map_to_keyboard(filename):  # возможно callback_data и text будут разными и придется менять структуру данных
-    with open(filename, 'r') as f:
+    with open(filename, 'r', encoding='utf8') as f:  # добавил енкодинг
         game_map = f.readline().split()
     btns = [InlineKeyboardButton(text=emoji.emojize(el, use_aliases=True), callback_data=str(i))
             # проверить коллбек значения
@@ -29,7 +29,7 @@ def map_to_keyboard(filename):  # возможно callback_data и text буд�
 
 
 def initial_map(game_id):
-    with open(f'map{game_id}', 'w') as f:
+    with open(f'map{game_id}', 'w', encoding='utf8') as f:  # добавил енкодинг
         a = ':white_large_square: ' * 9
         f.writelines(a.strip())
 
@@ -63,12 +63,17 @@ def play_command(update: Update, context: CallbackContext):
     if len(games) == 0:
         initial_map(1)
         game = Game(player_x=user_id, player_o=None, current_step=user_id, map=f'..\\map{1}',
-                    state='Waiting for players')
+                    state='waiting for players')
         game.save()
         send_initial_keyboard(context, user_id)
     else:
         for game in games:  # БАЗА ПУСТАЯ ЦИКЛ НЕ ЗАПУСКАЕТСЯ (запусается вроде(елс работает))
-            if str(user_id) == str(game.player_o) or str(user_id) == str(game.player_x):
+            if (str(user_id) == str(game.player_o) or str(user_id) == str(
+                    game.player_x)) and game.state == 'waiting for players':
+                context.bot.send_message(chat_id=user_id, text='Ожидайте 2 игрока!')
+                break  # проверить здесь нуэен ли брейк и работает ли
+            elif (str(user_id) == str(game.player_o) or str(user_id) == str(
+                    game.player_x)) and game.state == 'in progress':
                 reply_markup = map_to_keyboard(f'map{str(game.id)}')
                 context.bot.send_message(chat_id=user_id,
                                          text='Ты уже в игре!',
@@ -101,9 +106,53 @@ def play_command(update: Update, context: CallbackContext):
     # update.message.reply_text(text='Играй в крестики нолики через клавиатуру!', reply_markup=reply_markup)
 
 
-def buttons_callback_handler(bot: Bot, update: Update, context: CallbackContext):
+def buttons_callback_handler(update: Update, context: CallbackContext):
     query = update.callback_query
     data = query.data
+    user_id = update.effective_message.chat_id
+    X = emoji.emojize(':x:', use_aliases=True)
+    O = emoji.emojize(':o:', use_aliases=True)
+
+    db.connect()
+
+    games = Game.select()
+    cur_game = None
+    for game in games:  # отправлять клавиатуру игрокам только после нахождения 2 игрока
+        if (str(game.player_o) == str(user_id) or str(game.player_x) == str(
+                user_id)) and game.state == 'in progress':
+            cur_game = game
+            break
+    if cur_game is None:
+        context.bot.send_message(chat_id=user_id, text='Вас нету в базе с играми...')
+        db.close()
+        return
+    if str(user_id) == str(cur_game.current_step):  # ДОБАВИТЬ ФУНКЦИЮ ПРОВЕРКИ, ЕСТЬ ЛИ ПОБЕДА
+        keyboard = map_to_keyboard(f'map{cur_game.id}')
+        row = int(data) // 3
+        col = int(data) % 3
+        if str(user_id) == str(cur_game.player_x):
+            step = X
+            other_player = cur_game.player_o
+        else:
+            step = O
+            other_player = cur_game.player_x
+        if keyboard['inline_keyboard'][row][col].text not in [X, O]:  # проверить
+            keyboard['inline_keyboard'][row][col].text = emoji.emojize(step)
+            cur_game.current_player = other_player
+            updated_map = keyboard_to_map(keyboard)
+            with open(f'map{cur_game.id}', 'w', encoding='utf8') as f:
+                f.write(updated_map)
+            q = (Game.update({Game.current_step: other_player}).where(Game.id == cur_game.id))
+            q.execute()
+            context.bot.send_message(chat_id=other_player, text='Твой ход', reply_markup=keyboard)
+        else:
+            context.bot.send_message(chat_id=user_id, text='Выберите пустое поле!')
+            db.close()
+            return
+    else:
+        context.bot.send_message(chat_id=user_id, text='Сейчас не твой ход')
+
+    db.close()
 
 
 def message_handler(update: Update, context: CallbackContext):
@@ -121,6 +170,7 @@ def main():
     updater.dispatcher.add_handler(CommandHandler('help', filters=Filters.all, callback=help_command))
     updater.dispatcher.add_handler(CommandHandler('play', filters=Filters.all, callback=play_command))
     updater.dispatcher.add_handler(MessageHandler(filters=Filters.all, callback=message_handler))
+    updater.dispatcher.add_handler(CallbackQueryHandler(callback=buttons_callback_handler, pass_chat_data=True))
     # updater.dispatcher.add_error_handler(error)
 
     updater.start_polling()

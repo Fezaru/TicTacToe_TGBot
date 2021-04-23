@@ -9,6 +9,35 @@ from config import token
 from db import *
 
 
+def is_draw(cell, keyboard: InlineKeyboardMarkup):
+    pass
+
+
+def is_completed(cell, keyboard: InlineKeyboardMarkup):
+    cell = int(cell)
+    board = keyboard['inline_keyboard']
+    x = cell // 3
+    y = cell % 3
+
+    # по вертикали
+    if board[0][y].text == board[1][y].text == board[2][y].text:
+        return True
+
+    # по горизонтали
+    if board[x][0].text == board[x][1].text == board[x][2].text:
+        return True
+
+    # по главной диагонали
+    if x == y and board[0][0].text == board[1][1].text == board[2][2].text:
+        return True
+
+    # по побочной диагонали
+    if x + y == 2 and board[0][2].text == board[1][1].text == board[2][0].text:
+        return True
+
+    return False
+
+
 def keyboard_to_map(keyboard: InlineKeyboardMarkup):
     game_map = ''
     for row in keyboard['inline_keyboard']:  # ругается но работает
@@ -38,13 +67,13 @@ def initial_keyboard():  # возможно потом перепишу, т.к. 
     btns = [InlineKeyboardButton(text=emoji.emojize(':white_large_square:', use_aliases=True), callback_data=str(i)) for
             i in range(9)]
     buttons = [btns[i:i + 3] for i in range(0, 7, 3)]
-    return InlineKeyboardMarkup([buttons[0], buttons[1], buttons[2]])
+    return InlineKeyboardMarkup([buttons[0], buttons[1], buttons[2]], resize_keyboard=True)
 
 
-def send_initial_keyboard(context, user_id):
-    reply_markup = initial_keyboard()
-    context.bot.send_message(chat_id=user_id, text='Играй в крестики нолики через клавиатуру!',
-                             reply_markup=reply_markup)
+# def send_initial_keyboard(context, user_id):
+#     reply_markup = initial_keyboard()
+#     context.bot.send_message(chat_id=user_id, text='Играй в крестики нолики через клавиатуру!',
+#                              reply_markup=reply_markup)
 
 
 def start_command(update: Update, context: CallbackContext):
@@ -65,7 +94,8 @@ def play_command(update: Update, context: CallbackContext):
         game = Game(player_x=user_id, player_o=None, current_step=user_id, map=f'..\\map{1}',
                     state='waiting for players')
         game.save()
-        send_initial_keyboard(context, user_id)
+        # send_initial_keyboard(context, user_id)
+        context.bot.send_message(chat_id=user_id, text='Ты играешь за X! Ищем второго игрока')
     else:
         for game in games:  # БАЗА ПУСТАЯ ЦИКЛ НЕ ЗАПУСКАЕТСЯ (запусается вроде(елс работает))
             if (str(user_id) == str(game.player_o) or str(user_id) == str(
@@ -87,10 +117,10 @@ def play_command(update: Update, context: CallbackContext):
                     game.state = 'in progress'
                     game.save()
                     context.bot.send_message(chat_id=game.player_o,  # проверить работает ли
-                                             text='Ты уже в игре!',
+                                             text='Ты играешь за O! Игра началась',
                                              reply_markup=initial_keyboard())
                     context.bot.send_message(chat_id=game.player_x,
-                                             text='Ты уже в игре!',
+                                             text='Игра началась',
                                              reply_markup=initial_keyboard())
                     break
             else:
@@ -100,7 +130,8 @@ def play_command(update: Update, context: CallbackContext):
                 game = Game(player_x=user_id, player_o=None, current_step=user_id, map=f'..\\map{max_id}',
                             state='Waiting for players')
                 game.save()
-                send_initial_keyboard(context, user_id)
+                # send_initial_keyboard(context, user_id)
+                context.bot.send_message(chat_id=user_id, text='Ты играешь за X! Ищем второго игрока')
 
     db.close()
     # update.message.reply_text(text='Играй в крестики нолики через клавиатуру!', reply_markup=reply_markup)
@@ -144,7 +175,15 @@ def buttons_callback_handler(update: Update, context: CallbackContext):
                 f.write(updated_map)
             q = (Game.update({Game.current_step: other_player}).where(Game.id == cur_game.id))
             q.execute()
-            context.bot.send_message(chat_id=other_player, text='Твой ход', reply_markup=keyboard)
+
+            if is_completed(data, keyboard):
+                context.bot.send_message(chat_id=user_id, text='Ты выиграл!', reply_markup=keyboard)
+                context.bot.send_message(chat_id=other_player, text='Ты проиграл!', reply_markup=keyboard)
+                q = (Game.update({Game.state: 'finished'}).where(Game.id == cur_game.id))
+                q.execute()
+            else:
+                context.bot.send_message(chat_id=user_id, text='Жди хода врага', reply_markup=keyboard)
+                context.bot.send_message(chat_id=other_player, text='Твой ход', reply_markup=keyboard)
         else:
             context.bot.send_message(chat_id=user_id, text='Выберите пустое поле!')
             db.close()

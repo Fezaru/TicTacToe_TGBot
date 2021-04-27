@@ -1,4 +1,6 @@
 import emoji
+import json
+import os
 from telegram import Bot
 from telegram import InlineKeyboardButton
 from telegram import InlineKeyboardMarkup
@@ -75,15 +77,8 @@ def initial_keyboard():  # возможно потом перепишу, т.к. 
     return InlineKeyboardMarkup([buttons[0], buttons[1], buttons[2]], resize_keyboard=True)
 
 
-# def send_initial_keyboard(context, user_id):
-#     reply_markup = initial_keyboard()
-#     context.bot.send_message(chat_id=user_id, text='Играй в крестики нолики через клавиатуру!',
-#                              reply_markup=reply_markup)
-
-
 def start_command(update: Update, context: CallbackContext):
     update.message.reply_text('Привет! чтобы посмотреть все команды, напиши /help')
-    context.user_data['keyboards'] = defaultdict(list)
 
 
 def help_command(update: Update, context: CallbackContext):
@@ -100,24 +95,19 @@ def play_command(update: Update, context: CallbackContext):
         game = Game(player_x=user_id, player_o=None, current_step=user_id, map=f'..\\map{1}',
                     state='waiting for players')
         game.save()
-        # send_initial_keyboard(context, user_id)
         context.bot.send_message(chat_id=user_id, text='Ты играешь за крестики! Ищем второго игрока')
     else:
         for game in games:  # БАЗА ПУСТАЯ ЦИКЛ НЕ ЗАПУСКАЕТСЯ (запусается вроде(елс работает))
             if (str(user_id) == str(game.player_o) or str(user_id) == str(
                     game.player_x)) and game.state == 'waiting for players':
                 context.bot.send_message(chat_id=user_id, text='Ожидайте 2 игрока!')
-                break  # проверить здесь нуэен ли брейк и работает ли
+                break
             elif (str(user_id) == str(game.player_o) or str(user_id) == str(
                     game.player_x)) and game.state == 'in progress':
-                reply_markup = map_to_keyboard(f'map{str(game.id)}')
-
-                delete_keyboards(context, user_id)
-
-                msg = context.bot.send_message(chat_id=user_id,
-                                               text='Ты уже в игре!',
-                                               reply_markup=reply_markup)  # если игрок уже в базе выслать крестику карту из бд с его игрой
-                add_keyboard_to_dict(context, msg, user_id)
+                message = send_updated_keyboard(context, game, user_id)
+                data = {}
+                data = delete_prev_keyboard(context, data, user_id)
+                update_json(data, message)
                 break
         else:
             # И НЕ ЗАБЫТЬ ДОБАВИТЬ ПРОВЕРКУ if state == 'in process'
@@ -126,18 +116,13 @@ def play_command(update: Update, context: CallbackContext):
                     game.player_o = user_id
                     game.state = 'in progress'
                     game.save()
-                    delete_keyboards(context, game.player_o)
-                    delete_keyboards(context, game.player_x)
-                    context.bot.send_message(chat_id=game.player_o,  # проверить работает ли
-                                             text='Ты играешь за нолики!')
-                    msg1 = context.bot.send_message(chat_id=game.player_o,  # проверить работает ли
-                                                    text='Игра началась',
-                                                    reply_markup=initial_keyboard())
-                    msg2 = context.bot.send_message(chat_id=game.player_x,
-                                                    text='Игра началась',
-                                                    reply_markup=initial_keyboard())
-                    add_keyboard_to_dict(context, msg1, game.player_o)
-                    add_keyboard_to_dict(context, msg2, game.player_x)
+                    msg1, msg2 = start_game(context, game)
+                    messages = {str(game.player_x): msg2.message_id, str(game.player_o): msg1.message_id}
+                    data = {}
+                    if os.path.getsize("messages.json") != 0:
+                        with open('messages.json', 'r', encoding='utf8') as f:
+                            data = json.loads(f.read())
+                    update_json(data, messages)
                     break
             else:
                 max_id = Game.select(fn.MAX(Game.id)).scalar() + 1
@@ -146,28 +131,44 @@ def play_command(update: Update, context: CallbackContext):
                 game = Game(player_x=user_id, player_o=None, current_step=user_id, map=f'..\\map{max_id}',
                             state='Waiting for players')
                 game.save()
-                # send_initial_keyboard(context, user_id)
                 context.bot.send_message(chat_id=user_id, text='Ты играешь за X! Ищем второго игрока')
 
     db.close()
-    # update.message.reply_text(text='Играй в крестики нолики через клавиатуру!', reply_markup=reply_markup)
 
 
-def delete_keyboards(context, user_id):  # добавить в json file
-    print('----------------------------------------')
-    for message in context.user_data['keyboards'][str(user_id)]:
-        print(str(user_id), end=' ')
-        print(message.text)
-        try:
-            context.bot.delete_message(chat_id=user_id, message_id=message.message_id)
-        except Exception:
-            pass
-    print('----------------------------------------')
-    # context.user_data['keyboards'][str(user_id)].clear()
+def start_game(context, game):
+    context.bot.send_message(chat_id=game.player_o,
+                             text='Ты играешь за нолики!')
+    msg1 = context.bot.send_message(chat_id=game.player_o,
+                                    text='Игра началась',
+                                    reply_markup=initial_keyboard())
+    msg2 = context.bot.send_message(chat_id=game.player_x,
+                                    text='Игра началась',
+                                    reply_markup=initial_keyboard())
+    return msg1, msg2
 
 
-def add_keyboard_to_dict(context, msg, user_id):
-    context.user_data['keyboards'][str(user_id)].append(msg)
+def update_json(data, message):
+    with open('messages.json', 'w', encoding='utf8') as f:
+        data.update(message)
+        json.dump(data, f)
+
+
+def delete_prev_keyboard(context, data, user_id):
+    if os.path.getsize("messages.json") != 0:
+        with open('messages.json', 'r', encoding='utf8') as f:
+            data = json.loads(f.read())
+        context.bot.delete_message(chat_id=user_id, message_id=data[str(user_id)])
+    return data
+
+
+def send_updated_keyboard(context, game, user_id):
+    reply_markup = map_to_keyboard(f'map{str(game.id)}')
+    msg = context.bot.send_message(chat_id=user_id,
+                                   text='Ты уже в игре!',
+                                   reply_markup=reply_markup)
+    message = {str(user_id): msg.message_id}
+    return message
 
 
 def buttons_callback_handler(update: Update, context: CallbackContext):
@@ -210,38 +211,61 @@ def buttons_callback_handler(update: Update, context: CallbackContext):
             q.execute()
 
             if is_completed(data, keyboard):
-                delete_keyboards(context, user_id)
-                delete_keyboards(context, other_player)
-                msg1 = context.bot.send_message(chat_id=user_id, text='Ты выиграл!', reply_markup=keyboard)
-                msg2 = context.bot.send_message(chat_id=other_player, text='Ты проиграл!', reply_markup=keyboard)
-                add_keyboard_to_dict(context, msg1, user_id)
-                add_keyboard_to_dict(context, msg2, other_player)
+                reply_text = ['Ты выиграл!', 'Ты проиграл!']
+                handle_step(context, keyboard, other_player, reply_text, user_id)
                 q = (Game.update({Game.state: 'finished'}).where(Game.id == cur_game.id))
                 q.execute()
             elif is_draw(f'map{cur_game.id}'):
-                delete_keyboards(context, user_id)
-                delete_keyboards(context, other_player)
-                msg1 = context.bot.send_message(chat_id=user_id, text='Ничья!', reply_markup=keyboard)
-                msg2 = context.bot.send_message(chat_id=other_player, text='Ничья!', reply_markup=keyboard)
-                add_keyboard_to_dict(context, msg1, user_id)
-                add_keyboard_to_dict(context, msg2, other_player)
+                reply_text = ['Ничья!', 'Ничья!']
+                handle_step(context, keyboard, other_player, reply_text, user_id)
                 q = (Game.update({Game.state: 'finished'}).where(Game.id == cur_game.id))
                 q.execute()
             else:
-                delete_keyboards(context, cur_game.player_x)
-                delete_keyboards(context, cur_game.player_o)
-                msg1 = context.bot.send_message(chat_id=user_id, text='Жди хода врага', reply_markup=keyboard)
-                msg2 = context.bot.send_message(chat_id=other_player, text='Твой ход', reply_markup=keyboard)
-                add_keyboard_to_dict(context, msg1, user_id)
-                add_keyboard_to_dict(context, msg2, other_player)
+                reply_text = ['Жди хода врага!', 'Сейчас твой ход!']
+                handle_step(context, keyboard, other_player, reply_text, user_id)
         else:
-            context.bot.send_message(chat_id=user_id, text='Выберите пустое поле!')
+            # context.bot.send_message(chat_id=user_id, text='Выберите пустое поле!')
+            reply_text = 'Выберите пустое поле!'
+            with open("messages.json", "r", encoding='utf8') as read_file:
+                messages = json.load(read_file)
+            try:
+                context.bot.edit_message_text(chat_id=user_id, message_id=messages[str(user_id)],
+                                              text=reply_text)
+                context.bot.edit_message_reply_markup(chat_id=user_id, message_id=messages[str(user_id)],
+                                                      reply_markup=keyboard)
+            except Exception:
+                pass
             db.close()
             return
     else:
-        context.bot.send_message(chat_id=user_id, text='Сейчас не твой ход')
-
+        # context.bot.send_message(chat_id=user_id, text='Сейчас не твой ход')
+        reply_text = 'Сейчас не твой ход!'
+        keyboard = map_to_keyboard(f'map{cur_game.id}')
+        with open("messages.json", "r", encoding='utf8') as read_file:
+            messages = json.load(read_file)
+        try:
+            context.bot.edit_message_text(chat_id=user_id, message_id=messages[str(user_id)],
+                                          text=reply_text)
+            context.bot.edit_message_reply_markup(chat_id=user_id, message_id=messages[str(user_id)],
+                                                  reply_markup=keyboard)
+        except Exception:
+            pass
     db.close()
+
+
+def handle_step(context, keyboard, other_player, reply_text, user_id):
+    with open("messages.json", "r", encoding='utf8') as read_file:
+        messages = json.load(read_file)
+    try:
+        context.bot.edit_message_text(chat_id=user_id, message_id=messages[str(user_id)], text=reply_text[0])
+        context.bot.edit_message_text(chat_id=other_player, message_id=messages[str(other_player)],
+                                      text=reply_text[1])
+        context.bot.edit_message_reply_markup(chat_id=user_id, message_id=messages[str(user_id)],
+                                              reply_markup=keyboard)
+        context.bot.edit_message_reply_markup(chat_id=other_player, message_id=messages[str(other_player)],
+                                              reply_markup=keyboard)
+    except Exception:
+        pass
 
 
 def message_handler(update: Update, context: CallbackContext):

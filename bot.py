@@ -5,12 +5,17 @@ from telegram import InlineKeyboardMarkup
 from telegram import Update
 from telegram.ext import *
 
+from collections import defaultdict
 from config import token
 from db import *
 
 
-def is_draw(cell, keyboard: InlineKeyboardMarkup):
-    pass
+def is_draw(filename):
+    with open(filename, 'r', encoding='utf8') as f:
+        game_map = f.read().split()
+    if emoji.emojize(':white_large_square:', use_aliases=True) not in game_map:
+        return True
+    return False
 
 
 def is_completed(cell, keyboard: InlineKeyboardMarkup):
@@ -78,6 +83,7 @@ def initial_keyboard():  # возможно потом перепишу, т.к. 
 
 def start_command(update: Update, context: CallbackContext):
     update.message.reply_text('Привет! чтобы посмотреть все команды, напиши /help')
+    context.user_data['keyboards'] = defaultdict(list)
 
 
 def help_command(update: Update, context: CallbackContext):
@@ -95,7 +101,7 @@ def play_command(update: Update, context: CallbackContext):
                     state='waiting for players')
         game.save()
         # send_initial_keyboard(context, user_id)
-        context.bot.send_message(chat_id=user_id, text='Ты играешь за X! Ищем второго игрока')
+        context.bot.send_message(chat_id=user_id, text='Ты играешь за крестики! Ищем второго игрока')
     else:
         for game in games:  # БАЗА ПУСТАЯ ЦИКЛ НЕ ЗАПУСКАЕТСЯ (запусается вроде(елс работает))
             if (str(user_id) == str(game.player_o) or str(user_id) == str(
@@ -105,9 +111,13 @@ def play_command(update: Update, context: CallbackContext):
             elif (str(user_id) == str(game.player_o) or str(user_id) == str(
                     game.player_x)) and game.state == 'in progress':
                 reply_markup = map_to_keyboard(f'map{str(game.id)}')
-                context.bot.send_message(chat_id=user_id,
-                                         text='Ты уже в игре!',
-                                         reply_markup=reply_markup)  # если игрок уже в базе выслать крестику карту из бд с его игрой
+
+                delete_keyboards(context, user_id)
+
+                msg = context.bot.send_message(chat_id=user_id,
+                                               text='Ты уже в игре!',
+                                               reply_markup=reply_markup)  # если игрок уже в базе выслать крестику карту из бд с его игрой
+                add_keyboard_to_dict(context, msg, user_id)
                 break
         else:
             # И НЕ ЗАБЫТЬ ДОБАВИТЬ ПРОВЕРКУ if state == 'in process'
@@ -116,12 +126,18 @@ def play_command(update: Update, context: CallbackContext):
                     game.player_o = user_id
                     game.state = 'in progress'
                     game.save()
+                    delete_keyboards(context, game.player_o)
+                    delete_keyboards(context, game.player_x)
                     context.bot.send_message(chat_id=game.player_o,  # проверить работает ли
-                                             text='Ты играешь за O! Игра началась',
-                                             reply_markup=initial_keyboard())
-                    context.bot.send_message(chat_id=game.player_x,
-                                             text='Игра началась',
-                                             reply_markup=initial_keyboard())
+                                             text='Ты играешь за нолики!')
+                    msg1 = context.bot.send_message(chat_id=game.player_o,  # проверить работает ли
+                                                    text='Игра началась',
+                                                    reply_markup=initial_keyboard())
+                    msg2 = context.bot.send_message(chat_id=game.player_x,
+                                                    text='Игра началась',
+                                                    reply_markup=initial_keyboard())
+                    add_keyboard_to_dict(context, msg1, game.player_o)
+                    add_keyboard_to_dict(context, msg2, game.player_x)
                     break
             else:
                 max_id = Game.select(fn.MAX(Game.id)).scalar() + 1
@@ -135,6 +151,23 @@ def play_command(update: Update, context: CallbackContext):
 
     db.close()
     # update.message.reply_text(text='Играй в крестики нолики через клавиатуру!', reply_markup=reply_markup)
+
+
+def delete_keyboards(context, user_id):  # добавить в json file
+    print('----------------------------------------')
+    for message in context.user_data['keyboards'][str(user_id)]:
+        print(str(user_id), end=' ')
+        print(message.text)
+        try:
+            context.bot.delete_message(chat_id=user_id, message_id=message.message_id)
+        except Exception:
+            pass
+    print('----------------------------------------')
+    # context.user_data['keyboards'][str(user_id)].clear()
+
+
+def add_keyboard_to_dict(context, msg, user_id):
+    context.user_data['keyboards'][str(user_id)].append(msg)
 
 
 def buttons_callback_handler(update: Update, context: CallbackContext):
@@ -153,8 +186,8 @@ def buttons_callback_handler(update: Update, context: CallbackContext):
                 user_id)) and game.state == 'in progress':
             cur_game = game
             break
-    if cur_game is None:
-        context.bot.send_message(chat_id=user_id, text='Вас нету в базе с играми...')
+    if cur_game is None or cur_game.state == 'finished':
+        context.bot.send_message(chat_id=user_id, text='Игры не существует')
         db.close()
         return
     if str(user_id) == str(cur_game.current_step):  # ДОБАВИТЬ ФУНКЦИЮ ПРОВЕРКИ, ЕСТЬ ЛИ ПОБЕДА
@@ -177,13 +210,30 @@ def buttons_callback_handler(update: Update, context: CallbackContext):
             q.execute()
 
             if is_completed(data, keyboard):
-                context.bot.send_message(chat_id=user_id, text='Ты выиграл!', reply_markup=keyboard)
-                context.bot.send_message(chat_id=other_player, text='Ты проиграл!', reply_markup=keyboard)
+                delete_keyboards(context, user_id)
+                delete_keyboards(context, other_player)
+                msg1 = context.bot.send_message(chat_id=user_id, text='Ты выиграл!', reply_markup=keyboard)
+                msg2 = context.bot.send_message(chat_id=other_player, text='Ты проиграл!', reply_markup=keyboard)
+                add_keyboard_to_dict(context, msg1, user_id)
+                add_keyboard_to_dict(context, msg2, other_player)
+                q = (Game.update({Game.state: 'finished'}).where(Game.id == cur_game.id))
+                q.execute()
+            elif is_draw(f'map{cur_game.id}'):
+                delete_keyboards(context, user_id)
+                delete_keyboards(context, other_player)
+                msg1 = context.bot.send_message(chat_id=user_id, text='Ничья!', reply_markup=keyboard)
+                msg2 = context.bot.send_message(chat_id=other_player, text='Ничья!', reply_markup=keyboard)
+                add_keyboard_to_dict(context, msg1, user_id)
+                add_keyboard_to_dict(context, msg2, other_player)
                 q = (Game.update({Game.state: 'finished'}).where(Game.id == cur_game.id))
                 q.execute()
             else:
-                context.bot.send_message(chat_id=user_id, text='Жди хода врага', reply_markup=keyboard)
-                context.bot.send_message(chat_id=other_player, text='Твой ход', reply_markup=keyboard)
+                delete_keyboards(context, cur_game.player_x)
+                delete_keyboards(context, cur_game.player_o)
+                msg1 = context.bot.send_message(chat_id=user_id, text='Жди хода врага', reply_markup=keyboard)
+                msg2 = context.bot.send_message(chat_id=other_player, text='Твой ход', reply_markup=keyboard)
+                add_keyboard_to_dict(context, msg1, user_id)
+                add_keyboard_to_dict(context, msg2, other_player)
         else:
             context.bot.send_message(chat_id=user_id, text='Выберите пустое поле!')
             db.close()

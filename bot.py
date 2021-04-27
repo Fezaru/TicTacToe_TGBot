@@ -1,16 +1,24 @@
 import emoji
 import json
 import os
+import sys
 import random
 from telegram import Bot
 from telegram import InlineKeyboardButton
 from telegram import InlineKeyboardMarkup
 from telegram import Update
 from telegram.ext import *
+from puzzles import Puzzle
 
 from collections import defaultdict
 from config import token
 from db import *
+
+
+if (len(sys.argv)) == 2:
+    DIFFICULTY_MODE = sys.argv[1]
+else:
+    DIFFICULTY_MODE = 'hard'
 
 
 def is_draw(filename):
@@ -84,6 +92,18 @@ def start_command(update: Update, context: CallbackContext):
 
 def help_command(update: Update, context: CallbackContext):
     update.message.reply_text('/help - все команды \n/play - начать игру')
+
+
+def get_puzzle_command(update: Update, context: CallbackContext):
+    DIFFICULTY_MODE = 'hard'
+    if DIFFICULTY_MODE == 'easy':
+        question, answer = random.choice(list(Puzzle.easy.items()))
+        update.message.reply_photo(photo=open(question, 'rb'))
+        context.user_data['answer'] = answer
+    elif DIFFICULTY_MODE == 'hard':
+        question, answer = random.choice(list(Puzzle.hard.items()))
+        update.message.reply_photo(photo=open(question, 'rb'))
+        context.user_data['answer'] = answer
 
 
 def play_command(update: Update, context: CallbackContext):
@@ -295,7 +315,14 @@ def handle_step(context, keyboard, other_player, reply_text, user_id):
 
 
 def message_handler(update: Update, context: CallbackContext):
-    update.message.reply_text(random.choice(['Да.', 'Нет']))
+    if 'answer' in context.user_data.keys():
+        if update.message.text.lower() == context.user_data['answer']:
+            update.message.reply_text('Правильно!')
+            del context.user_data['answer']
+        else:
+            update.message.reply_text('Неправильно!')
+    else:
+        update.message.reply_text(random.choice(['Да.', 'Нет']))
 
 
 # def error(update: Update, context: CallbackContext):
@@ -309,6 +336,7 @@ def main():
     updater.dispatcher.add_handler(CommandHandler('help', filters=Filters.all, callback=help_command))
     updater.dispatcher.add_handler(CommandHandler('play', filters=Filters.all, callback=play_command))
     updater.dispatcher.add_handler(CommandHandler('exit', filters=Filters.all, callback=exit_command))
+    updater.dispatcher.add_handler(CommandHandler('get_puzzle', filters=Filters.all, callback=get_puzzle_command))
     updater.dispatcher.add_handler(MessageHandler(filters=Filters.all, callback=message_handler))
     updater.dispatcher.add_handler(CallbackQueryHandler(callback=buttons_callback_handler, pass_chat_data=True))
     # updater.dispatcher.add_error_handler(error)

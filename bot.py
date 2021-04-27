@@ -1,6 +1,7 @@
 import emoji
 import json
 import os
+import random
 from telegram import Bot
 from telegram import InlineKeyboardButton
 from telegram import InlineKeyboardMarkup
@@ -294,7 +295,7 @@ def handle_step(context, keyboard, other_player, reply_text, user_id):
 
 
 def message_handler(update: Update, context: CallbackContext):
-    update.message.reply_text('тест')
+    update.message.reply_text(random.choice('Да.', 'Нет'))
 
 
 # def error(update: Update, context: CallbackContext):

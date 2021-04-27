@@ -136,6 +136,31 @@ def play_command(update: Update, context: CallbackContext):
     db.close()
 
 
+def exit_command(update: Update, context: CallbackContext):
+    user_id = update.message.chat_id
+
+    db.connect()
+    games = Game.select()
+
+    if len(games) != 0:
+        for game in games:  # БАЗА ПУСТАЯ ЦИКЛ НЕ ЗАПУСКАЕТСЯ (запусается вроде(елс работает))
+            if (str(user_id) == str(game.player_o) or str(user_id) == str(
+                    game.player_x)) and game.state in ['in progress', 'waiting for players']:
+                q = Game.delete().where(Game.id == game.id)
+                q.execute()
+                context.bot.send_message(chat_id=game.player_x, text='Игра закончена')
+                try:
+                    context.bot.send_message(chat_id=game.player_o, text='Игра закончена')
+                except Exception:
+                    pass
+                break
+        else:
+            context.bot.send_message(chat_id=user_id, text='Игра не может быть завершена')
+    else:
+        context.bot.send_message(chat_id=user_id, text='Игра не может быть завершена')
+    db.close()
+
+
 def start_game(context, game):
     context.bot.send_message(chat_id=game.player_o,
                              text='Ты играешь за нолики!')
@@ -282,6 +307,7 @@ def main():
     updater.dispatcher.add_handler(CommandHandler('start', filters=Filters.all, callback=start_command))
     updater.dispatcher.add_handler(CommandHandler('help', filters=Filters.all, callback=help_command))
     updater.dispatcher.add_handler(CommandHandler('play', filters=Filters.all, callback=play_command))
+    updater.dispatcher.add_handler(CommandHandler('exit', filters=Filters.all, callback=exit_command))
     updater.dispatcher.add_handler(MessageHandler(filters=Filters.all, callback=message_handler))
     updater.dispatcher.add_handler(CallbackQueryHandler(callback=buttons_callback_handler, pass_chat_data=True))
     # updater.dispatcher.add_error_handler(error)

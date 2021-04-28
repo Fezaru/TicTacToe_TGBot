@@ -89,7 +89,7 @@ def help_command(update: Update, context: CallbackContext):
 
 def get_puzzle_command(update: Update, context: CallbackContext):
     print(os.getcwd())
-    with open('c# form//mode.txt', 'r') as f:
+    with open('c# form\\bin\\Debug//mode.txt', 'r') as f:
         DIFFICULTY_MODE = f.read()
     if DIFFICULTY_MODE == 'easy':
         question, answer = random.choice(list(Puzzle.easy.items()))

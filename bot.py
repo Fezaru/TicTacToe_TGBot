@@ -84,13 +84,13 @@ def start_command(update: Update, context: CallbackContext):
 
 
 def help_command(update: Update, context: CallbackContext):
-    update.message.reply_text('/help - все команды \n/play - начать игру')
+    update.message.reply_text(
+        '/help - все команды \n/play - начать игру \n/exit - закончить текущую игру \n/get_puzzle - получить ребус')
 
 
 def get_puzzle_command(update: Update, context: CallbackContext):
-    print(os.getcwd())
     with open('c# form\\bin\\Debug//mode.txt', 'r') as f:
-        DIFFICULTY_MODE = f.read()
+        DIFFICULTY_MODE = f.readline().strip()
     if DIFFICULTY_MODE == 'easy':
         question, answer = random.choice(list(Puzzle.easy.items()))
         update.message.reply_photo(photo=open(question, 'rb'))

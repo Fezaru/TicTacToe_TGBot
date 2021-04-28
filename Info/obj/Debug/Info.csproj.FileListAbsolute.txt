@@ -1,0 +1,9 @@
+F:\TicTacToe TGBot\Info\bin\Debug\Info.exe.config
+F:\TicTacToe TGBot\Info\bin\Debug\Info.exe
+F:\TicTacToe TGBot\Info\bin\Debug\Info.pdb
+F:\TicTacToe TGBot\Info\obj\Debug\Info.csprojAssemblyReference.cache
+F:\TicTacToe TGBot\Info\obj\Debug\Info.Form1.resources
+F:\TicTacToe TGBot\Info\obj\Debug\Info.Properties.Resources.resources
+F:\TicTacToe TGBot\Info\obj\Debug\Info.csproj.GenerateResource.cache
+F:\TicTacToe TGBot\Info\obj\Debug\Info.exe
+F:\TicTacToe TGBot\Info\obj\Debug\Info.pdb

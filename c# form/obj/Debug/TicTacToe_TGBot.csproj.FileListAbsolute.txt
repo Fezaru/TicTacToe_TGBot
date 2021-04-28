@@ -22,3 +22,30 @@ C:\Users\Fezaru\source\repos\TicTacToe_TGBot\bin\Debug\Microsoft.Dynamic.xml
 C:\Users\Fezaru\source\repos\TicTacToe_TGBot\bin\Debug\Microsoft.Scripting.xml
 C:\Users\Fezaru\source\repos\TicTacToe_TGBot\bin\Debug\Microsoft.Scripting.Metadata.xml
 C:\Users\Fezaru\source\repos\TicTacToe_TGBot\obj\Debug\TicTacToe_TGBot.csproj.CopyComplete
+F:\TicTacToe TGBot\c# form\bin\Debug\TicTacToe_TGBot.exe.config
+F:\TicTacToe TGBot\c# form\bin\Debug\TicTacToe_TGBot.exe
+F:\TicTacToe TGBot\c# form\bin\Debug\TicTacToe_TGBot.pdb
+F:\TicTacToe TGBot\c# form\bin\Debug\IronPython.dll
+F:\TicTacToe TGBot\c# form\bin\Debug\IronPython.Modules.dll
+F:\TicTacToe TGBot\c# form\bin\Debug\IronPython.SQLite.dll
+F:\TicTacToe TGBot\c# form\bin\Debug\IronPython.Wpf.dll
+F:\TicTacToe TGBot\c# form\bin\Debug\Microsoft.Dynamic.dll
+F:\TicTacToe TGBot\c# form\bin\Debug\Microsoft.Scripting.dll
+F:\TicTacToe TGBot\c# form\bin\Debug\Microsoft.Scripting.Metadata.dll
+F:\TicTacToe TGBot\c# form\bin\Debug\IronPython.xml
+F:\TicTacToe TGBot\c# form\bin\Debug\IronPython.Modules.xml
+F:\TicTacToe TGBot\c# form\bin\Debug\IronPython.SQLite.xml
+F:\TicTacToe TGBot\c# form\bin\Debug\IronPython.Wpf.xml
+F:\TicTacToe TGBot\c# form\bin\Debug\Microsoft.Dynamic.xml
+F:\TicTacToe TGBot\c# form\bin\Debug\Microsoft.Scripting.xml
+F:\TicTacToe TGBot\c# form\bin\Debug\Microsoft.Scripting.Metadata.xml
+F:\TicTacToe TGBot\c# form\obj\Debug\TicTacToe_TGBot.csprojAssemblyReference.cache
+F:\TicTacToe TGBot\c# form\obj\Debug\TicTacToe_TGBot.Form1.resources
+F:\TicTacToe TGBot\c# form\obj\Debug\TicTacToe_TGBot.Properties.Resources.resources
+F:\TicTacToe TGBot\c# form\obj\Debug\TicTacToe_TGBot.csproj.GenerateResource.cache
+F:\TicTacToe TGBot\c# form\obj\Debug\TicTacToe_TGBot.csproj.CopyComplete
+F:\TicTacToe TGBot\c# form\obj\Debug\TicTacToe_TGBot.exe
+F:\TicTacToe TGBot\c# form\obj\Debug\TicTacToe_TGBot.pdb
+F:\TicTacToe TGBot\c# form\bin\Debug\Info.exe
+F:\TicTacToe TGBot\c# form\bin\Debug\Info.pdb
+F:\TicTacToe TGBot\c# form\bin\Debug\Info.exe.config

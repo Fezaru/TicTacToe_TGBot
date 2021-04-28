@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,17 +26,23 @@ namespace TicTacToe_TGBot
 
         private void button2_Click(object sender, EventArgs e)
         {
-            label3.Text = "easy";
+            using (StreamWriter sw = new StreamWriter("mode.txt", false))
+            {
+                sw.WriteLine("easy");
+            }
         }
 
         private void button3_Click(object sender, EventArgs e)
         {
-            label3.Text = "hard";
+            using (StreamWriter sw = new StreamWriter("mode.txt", false))
+            {
+                sw.WriteLine("hard");
+            }
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
-            
+            new Info.Form1().Show();
         }
     }
 }

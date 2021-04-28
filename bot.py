@@ -10,15 +10,8 @@ from telegram import Update
 from telegram.ext import *
 from puzzles import Puzzle
 
-from collections import defaultdict
 from config import token
 from db import *
-
-
-if (len(sys.argv)) == 2:
-    DIFFICULTY_MODE = sys.argv[1]
-else:
-    DIFFICULTY_MODE = 'hard'
 
 
 def is_draw(filename):
@@ -95,7 +88,9 @@ def help_command(update: Update, context: CallbackContext):
 
 
 def get_puzzle_command(update: Update, context: CallbackContext):
-    DIFFICULTY_MODE = 'hard'
+    print(os.getcwd())
+    with open('c# form//mode.txt', 'r') as f:
+        DIFFICULTY_MODE = f.read()
     if DIFFICULTY_MODE == 'easy':
         question, answer = random.choice(list(Puzzle.easy.items()))
         update.message.reply_photo(photo=open(question, 'rb'))
